@@ -53,7 +53,6 @@ public class Outline {
     }
 
     public static boolean[][] createSinglePixelLine(boolean[][] mask, Point center, int maxHeight, int maxWidth) {
-        System.out.println("working on single pixel line now");
         boolean hasremoved = true;
 
         while (hasremoved) {
@@ -175,6 +174,23 @@ public class Outline {
         }
     
         return image;
+    }
+    
+    public static Point findCenter(boolean[][] mask) {
+        int count = 0;
+        int sumX = 0;
+        int sumY = 0;
+
+        for (int y = 0; y < mask.length; y++) {
+            for (int x = 0; x < mask[0].length; x++) {
+                if (mask[y][x]) {
+                    sumX += x;
+                    sumY += y;
+                    count++;
+                }
+            }
+        }
+        return new Point(sumX/count, sumY/count);
     }
 
     public static boolean[][] normalizeImage(File file) {
