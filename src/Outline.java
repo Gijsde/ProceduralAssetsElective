@@ -1,22 +1,16 @@
+package src;
+
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.awt.Point;
-import java.lang.classfile.attribute.SourceFileAttribute;
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import javax.swing.plaf.TextUI;
 import java.util.Arrays;
-import javax.sound.midi.Soundbank;
-import javax.sound.sampled.SourceDataLine;
 
 
-
-public class Main {
+public class Outline {
     public static int[][] directions = {
         {1, 0},
         {-1, 0},
@@ -60,30 +54,36 @@ public class Main {
 
     public static boolean[][] createSinglePixelLine(boolean[][] mask, Point center, int maxHeight, int maxWidth) {
         System.out.println("working on single pixel line now");
-        Queue<Point> queue = new ArrayDeque<>();
-        boolean[][] visited = new boolean[maxHeight][maxWidth];
-        queue.add(center);
-        visited[center.y][center.x] = true;
+        boolean hasremoved = true;
 
-        while (!queue.isEmpty()) {
-            Point current = queue.poll();
-            // the program only has to check location with a true value
-            if (mask[current.y][current.x]) {
-                // save the position and its surroundings
-                boolean[] pos = takePart(mask, maxHeight, maxWidth, current);
-                
-                if (isRemovable(pos)) {
-                    mask[current.y][current.x] = false;
-                }
-            } 
+        while (hasremoved) {
+            hasremoved = false;
+            Queue<Point> queue = new ArrayDeque<>();
+            boolean[][] visited = new boolean[maxHeight][maxWidth];
+            queue.add(center);
+            visited[center.y][center.x] = true;
 
-            for (int[] dir : directions) {
-                int futureX = current.x + dir[0];
-                int futureY = current.y + dir[1];
-                if (futureX >= 0 && futureX < maxWidth && futureY >= 0 && futureY < maxHeight) {
-                    if (!visited[futureY][futureX]) {
-                        queue.add(new Point(futureX, futureY));
-                        visited[futureY][futureX] = true;
+            while (!queue.isEmpty()) {
+                Point current = queue.poll();
+                // the program only has to check location with a true value
+                if (mask[current.y][current.x]) {
+                    // save the position and its surroundings
+                    boolean[] pos = takePart(mask, maxHeight, maxWidth, current);
+                    
+                    if (isRemovable(pos)) {
+                        hasremoved = true;
+                        mask[current.y][current.x] = false;
+                    }
+                } 
+
+                for (int[] dir : directions) {
+                    int futureX = current.x + dir[0];
+                    int futureY = current.y + dir[1];
+                    if (futureX >= 0 && futureX < maxWidth && futureY >= 0 && futureY < maxHeight) {
+                        if (!visited[futureY][futureX]) {
+                            queue.add(new Point(futureX, futureY));
+                            visited[futureY][futureX] = true;
+                        }
                     }
                 }
             }
@@ -140,31 +140,81 @@ public class Main {
         return rotated;
     }
 
-    public static void main(String[] args) {
+    public static boolean[][] shaving(boolean[][] originalMask) {
+
+        int height = originalMask.length;
+        int width = originalMask[0].length;
+    
+        int minX = width - 1;
+        int minY = height - 1;
+        int maxX = 0;
+        int maxY = 0;
+    
+        // find bounding box
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (originalMask[y][x]) {
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                }
+            }
+        }
+    
+        int newH = (maxY - minY) + 1;
+        int newW = (maxX - minX) + 1;
+    
+        boolean[][] image = new boolean[newH][newW];
+    
+        // copy cropped area
+        for (int y = minY; y <= maxY; y++) {
+            for (int x = minX; x <= maxX; x++) {
+                image[y - minY][x - minX] = originalMask[y][x];
+            }
+        }
+    
+        return image;
+    }
+
+    public static boolean[][] normalizeImage(File file) {
         try {
-            // Load image
-            BufferedImage image = ImageIO.read(new File("image.png"));
+            BufferedImage image = ImageIO.read(new File("images/photo.png"));
             boolean[][] mask = createBlackWhiteMask(image);
             int height = image.getHeight();
             int width = image.getWidth();
 
             createSinglePixelLine(mask, new Point(width/2, height/2), height, width);
+            boolean[][] smallerMask = shaving(mask);
 
-            for (int y = 0; y < height; y++) {
-                System.out.print(y + " ");
-                for (int x = 0; x < width; x++) {
-                    if (x == width/2 && y == width/2) {
-                        System.out.print("o");
-                    } else {
-                        System.out.print(mask[y][x] ? "#" : ".");
-                    }
-                }
-                System.out.println();
-            }
-            
-
-        } catch (IOException e) {
+            return smallerMask;
+        } catch(IOException e) {
             System.out.println("image could not be loaded");
+        }
+        return null;
+    }
+
+
+    public static void main(String[] args) {
+
+        File path = new File("images/photo.png");
+        boolean[][] mask = normalizeImage(path);
+
+        
+        // Load image
+        int height = mask.length;
+        int width = mask[0].length;
+
+        for (int y = 0; y < height; y++) {
+            System.out.print(y + " ");
+            for (int x = 0; x < width; x++) {
+                if (x == width/2 && y == height/2) {
+                    System.out.print("o");
+                } else {
+                    System.out.print(mask[y][x] ? "#" : ".");
+                }
+            }
+            System.out.println();
         }
     }
 }
