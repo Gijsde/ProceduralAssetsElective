@@ -1,13 +1,13 @@
 package src;
 
-import javax.imageio.ImageIO;
+import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayDeque;
-import java.util.Queue;
-import java.awt.Point;
 import java.util.Arrays;
+import java.util.Queue;
+import javax.imageio.ImageIO;
 
 
 public class Outline {
@@ -139,7 +139,7 @@ public class Outline {
         return rotated;
     }
 
-    public static boolean[][] shaving(boolean[][] originalMask) {
+    public static boolean[][] removeUnnecesaryLines(boolean[][] originalMask) {
 
         int height = originalMask.length;
         int width = originalMask[0].length;
@@ -175,7 +175,7 @@ public class Outline {
     
         return image;
     }
-    
+
     public static Point findCenter(boolean[][] mask) {
         int count = 0;
         int sumX = 0;
@@ -193,7 +193,37 @@ public class Outline {
         return new Point(sumX/count, sumY/count);
     }
 
-    public static boolean[][] normalizeImage(File file) {
+    public static Boolean[][] removeOutside(boolean[][] mask) {
+        int maxHeight = mask.length;
+        int maxWidth = mask[0].length;
+        Point center = findCenter(mask);
+        boolean[][] visited = new boolean[maxHeight][maxWidth];
+        Boolean[][] newMask = new Boolean[maxHeight][maxWidth];
+        Queue<Point> queue = new ArrayDeque<>();
+        queue.add(center);
+        visited[center.y][center.x] = true;
+        
+        while (!queue.isEmpty()) {
+            Point current = queue.poll();
+            newMask[current.y][current.x] = mask[current.y][current.x];            
+
+            if (!mask[current.y][current.x]) {
+                for (int[] dir : directions) {
+                    int futureX = current.x + dir[0];
+                    int futureY = current.y + dir[1];
+                    if (futureX >= 0 && futureX < maxWidth && futureY >= 0 && futureY < maxHeight) {
+                        if (!visited[futureY][futureX]) {
+                            queue.add(new Point(futureX, futureY));
+                            visited[futureY][futureX] = true;
+                        }
+                    }
+                }
+            }
+        }
+        return newMask;
+    }
+
+    public static Boolean[][] normalizeImage(File file) {
         try {
             BufferedImage image = ImageIO.read(new File("images/photo.png"));
             boolean[][] mask = createBlackWhiteMask(image);
@@ -201,9 +231,10 @@ public class Outline {
             int width = image.getWidth();
 
             createSinglePixelLine(mask, new Point(width/2, height/2), height, width);
-            boolean[][] smallerMask = shaving(mask);
+            boolean[][] smallerMask = removeUnnecesaryLines(mask);
+            Boolean[][] onlyInside = removeOutside(smallerMask);
 
-            return smallerMask;
+            return onlyInside;
         } catch(IOException e) {
             System.out.println("image could not be loaded");
         }
@@ -214,7 +245,7 @@ public class Outline {
     public static void main(String[] args) {
 
         File path = new File("images/photo.png");
-        boolean[][] mask = normalizeImage(path);
+        Boolean[][] mask = normalizeImage(path);
 
         
         // Load image
@@ -226,6 +257,8 @@ public class Outline {
             for (int x = 0; x < width; x++) {
                 if (x == width/2 && y == height/2) {
                     System.out.print("o");
+                } else if (mask[y][x] == null) {
+                    System.out.print(" ");
                 } else {
                     System.out.print(mask[y][x] ? "#" : ".");
                 }

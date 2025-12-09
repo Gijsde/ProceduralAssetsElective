@@ -1,8 +1,22 @@
 package src;
 
+import java.awt.Point;
 import java.io.File;
 
+
 public class Mountiain {
+    public static void removeOutside(boolean[][] mask) {
+        
+    }
+
+    public static double findDistance(Point from, Point to) {
+        return .0;
+    }
+
+    public static byte[][] fillOutline(boolean[][] mask) {
+
+        return null;
+    }
 
 
     public static void main(String[] args) {
