@@ -25,6 +25,21 @@ public class Mountain {
         return points.toArray(new Point[0]);
     }
 
+    private static void addSpurToHeightMap(int[][] heightMap, boolean[][] spurMask, Point[] outline, Point center) {
+        for (int y = 0; y < spurMask.length; y++) {
+            for (int x = 0; x < spurMask[0].length; x++) {
+                if (spurMask[y][x]) {
+                    double distanceToCenter = findDistance(center, new Point(x,y));
+                    double totalDistance = Helper.smallestDistanceFromPoint(outline, new Point(x, y)) + distanceToCenter;
+    
+                    double ratio = distanceToCenter/totalDistance;
+                    int value = (int) Math.round(ratio * 255);
+                    heightMap[y][x] = value;
+                } else heightMap[y][x] = 255;
+            }
+        }
+    }
+
 
     public static int[][] fillOutline(Boolean[][] mask) {
         int height = mask.length;
@@ -70,31 +85,111 @@ public class Mountain {
         return heightMap;
     }
 
+    // public static void fillOutline2(Boolean[][] mask, int[][] heightMap, Point[] spur, Point[] outline, Point center) {
+    //     int height = mask.length;
+    //     int width = mask[0].length;
+
+    //     for (int y = 0; y < height; y++) {
+    //         for (int x = 0; x < width; x++) {
+    //             //ensures outline and outside is always white
+    //             if (mask[y][x] == null || Boolean.TRUE.equals(mask[y][x])) {
+    //                 heightMap[y][x] = 255;
+    //             } else if (heightMap[y][x] == 255){
+    //                 Point point = new Point(x, y);
+    //                 Point spurPoint = Helper.closestFromPoint(spur, point);
+    //                 double distanceToCenter = findDistance(spurPoint, point);
+    //                 double distanceToLine = Helper.smallestDistanceFromPoint(outline, point);
+    //                 double totalDistance = distanceToCenter + distanceToLine;
+                    
+                    
+                    
+    //                 double ratio = Math.sqrt(distanceToCenter) / Math.sqrt(totalDistance);
+    //                 int value = (int) Math.round(255 * ratio);
+    //                 System.out.println("setting: " + value + " on: " + new Point(x, y));
+    //                 heightMap[y][x] = value;  
+    //             }
+    //         }
+    //     }
+    // }
+    public static void fillOutline2(Boolean[][] mask, int[][] heightMap, Point[] spur, Point[] outline, Point center) {
+        int height = mask.length;
+        int width = mask[0].length;
+    
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                // ensure outline and outside is always white
+                if (mask[y][x] == null || Boolean.TRUE.equals(mask[y][x])) {
+                    heightMap[y][x] = 255;
+                } else {
+                    Point point = new Point(x, y);
+    
+                    // find closest spur point
+                    Point spurPoint = Helper.closestFromPoint(spur, point);
+    
+                    // get the height at that spur point
+                    int spurHeight = heightMap[spurPoint.y][spurPoint.x];
+    
+                    // distances from current point
+                    double distanceToCenter = findDistance(spurPoint, point);
+                    double distanceToLine = Helper.smallestDistanceFromPoint(outline, point);
+                    double totalDistance = distanceToCenter + distanceToLine;
+                    if (totalDistance == 0) totalDistance = 1e-6;
+    
+                    // ratio (0 at spur, 1 at line)
+                    double ratio = Math.sqrt(distanceToCenter / totalDistance);
+    
+                    // final value interpolated from spur height
+                    int value = (int) Math.round(spurHeight * (1 - ratio) + 255 * ratio);
+    
+                    heightMap[y][x] = value;
+                }
+            }
+        }
+    }
+
 
     public static void main(String[] args) {
-        File path = new File("images/photo.png");
+        File path = new File("images/art.png");
         Boolean[][] mask = Outline.normalizeImage(path);
-        int[][] heightMap = fillOutline(mask);
+        int[][] heightMap = new int[mask.length][mask[0].length];
+        // int[][] heightMap = fillOutline(mask);
         System.out.println("no errors so far!!");
+        boolean[][] spurMask = Spurs.makeSpurMask(mask, 4);
+        Point center = Outline.findCenterObject(mask);
+        Point[] spur = Helper.findAllPoints(spurMask);
+        Point[] outline = Helper.findAllPoints(mask);
 
-        File output = new File("images/mountain2.png");
+        for (int y = 0; y < mask.length; y++) {
+            System.out.print(y);
+            for (int x = 0; x < mask[0].length; x++) {
+                if (Boolean.TRUE.equals(mask[y][x])) {
+                    System.out.print("x");
+                } else if (Boolean.FALSE.equals(mask[y][x])) {
+                    System.out.print(".");
+                } else System.out.print(" ");
+            }
+            System.out.println(" ");
+        }
+
+
+        // for (int y = 0; y < heightMap.length; y++) {
+        //     System.out.print(y);
+        //     for (int x = 0; x < heightMap[0].length; x++) {
+        //         System.out.print(heightMap[y][x]);
+        //     }
+        //     System.out.println(" ");
+        // }
+
+        addSpurToHeightMap(heightMap, spurMask, outline, center);
+        fillOutline2(mask, heightMap, spur, outline, center);
+        System.out.println(heightMap[16][20]);
+
+        System.out.println("saving file");
+
+        File output = new File("images/mountain3.png");
 
         ImageRW.saveGreyscaleMaskToFile(heightMap, output);
 
-
-        /**
-         * TODO: add a way to force the spurs
-         * this will also create valleys.
-         * IDEA: user inputs a number this will be the amount of lines the mountain will have
-         * split the mountain up in x amount of parts. look for the farthest point in those areas
-         * from the center to those farthest points will be the lines
-         */
-
-        /**
-         * TODO: allow for creating the lines a mountain has independantly from the filling in of the mountain.
-         * the lines that the mountain has should be seen as a peak but with the respective height as the max height.
-         * the function for filling in the rest of the mountain should use the lines to determine the height of each pixel
-         */
 
         /**
          * TODO: allow for multiple different kind of functions to be used to determine the height of the mountain.
@@ -106,6 +201,9 @@ public class Mountain {
          * this will create some roughness to the mountain meaning it wont be as smooth.
          */
 
-
+        /**
+         * TODO: add some divergent to the Spurs
+         * this will allow the mountain to look more natural, as it isn't as "perfect" as without.
+         */
     }
 }
