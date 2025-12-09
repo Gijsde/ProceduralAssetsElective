@@ -1,7 +1,6 @@
 package src;
 
 import java.awt.Point;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -71,30 +70,6 @@ public class Mountain {
         return heightMap;
     }
 
-    public static BufferedImage toGrayscaleImage(int[][] data) {
-        int height = data.length;
-        int width = data[0].length;
-    
-        BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
-    
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                // Convert signed byte (-128..127) to unsigned (0..255)
-                int value = data[y][x];
-                int rgb = (value << 16) | (value << 8) | value; // convert to RGB format
-
-                img.setRGB(x, y, rgb);
-            }
-        }
-    
-        return img;
-    }
-
-
-
-
-    
-
 
     public static void main(String[] args) {
         File path = new File("images/photo.png");
@@ -108,7 +83,7 @@ public class Mountain {
 
 
         /**
-         * TODO: add a way to force the lines mountains have
+         * TODO: add a way to force the spurs
          * this will also create valleys.
          * IDEA: user inputs a number this will be the amount of lines the mountain will have
          * split the mountain up in x amount of parts. look for the farthest point in those areas

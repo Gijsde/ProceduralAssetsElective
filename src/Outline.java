@@ -1,7 +1,6 @@
 package src;
 
 import java.awt.Point;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -33,24 +32,9 @@ public class Outline {
         {true, true, false, false, true, false, false, true, false}
     };
 
-    public static boolean[][] createBlackWhiteMask(BufferedImage image){
-        int width = image.getWidth();
-        int height = image.getHeight();
+   
 
-        boolean[][] mask = new boolean[height][width];
-
-        for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    int blue = (image.getRGB(x, y))&0xFF; // takes the blue value of the pixel
-                    
-                    // sets the boolean at location to 1 if it is blacker than it is white
-                    mask[y][x] = blue < 128;
-                }
-        }
-        return mask;
-    }
-
-    public static boolean[][] createSinglePixelLine(boolean[][] mask, Point center, int maxHeight, int maxWidth) {
+    private static boolean[][] createSinglePixelLine(boolean[][] mask, Point center, int maxHeight, int maxWidth) {
         boolean hasremoved = true;
 
         while (hasremoved) {
@@ -88,7 +72,7 @@ public class Outline {
         return mask;
     }
 
-    public static boolean isRemovable(boolean[] pos) {
+    private static boolean isRemovable(boolean[] pos) {
         
         for (int index = 0; index < 4; index++) {
             pos = rotateClockwise(pos);
@@ -100,7 +84,7 @@ public class Outline {
     }
 
     // takes a 3x3 square around a Point, a locations is out of bounds it sets that location to false.
-    public static boolean[] takePart(boolean[][] map, int maxHeight, int maxWidth, Point current) {
+    private static boolean[] takePart(boolean[][] map, int maxHeight, int maxWidth, Point current) {
         boolean[] pos = new boolean[9];
         for (int dy = -1; dy <= 1; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
@@ -123,7 +107,7 @@ public class Outline {
 
     // only works with an array of size 9 if the array is seen as a 3x3 grid read from left to right, top to bottom
     // idealy would be writtern more robust but I could care less
-    public static boolean[] rotateClockwise(boolean[] pos) {
+    private static boolean[] rotateClockwise(boolean[] pos) {
         boolean[] rotated = new boolean[9];
         rotated[0] = pos[6];
         rotated[1] = pos[3];
@@ -137,7 +121,7 @@ public class Outline {
         return rotated;
     }
 
-    public static boolean[][] removeUnnecesaryLines(boolean[][] originalMask) {
+    private static boolean[][] removeUnnecesaryLines(boolean[][] originalMask) {
 
         int height = originalMask.length;
         int width = originalMask[0].length;
@@ -174,7 +158,7 @@ public class Outline {
         return image;
     }
 
-    public static Point findCenterPrimitive(boolean[][] mask) {
+    private static Point findCenterPrimitive(boolean[][] mask) {
         int count = 0;
         int sumX = 0;
         int sumY = 0;
@@ -209,7 +193,7 @@ public class Outline {
     }
     
 
-    public static Boolean[][] removeOutside(boolean[][] mask) {
+    private static Boolean[][] removeOutside(boolean[][] mask) {
         int maxHeight = mask.length;
         int maxWidth = mask[0].length;
         Point center = findCenterPrimitive(mask);
