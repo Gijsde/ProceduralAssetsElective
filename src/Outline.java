@@ -176,7 +176,7 @@ public class Outline {
         return image;
     }
 
-    public static Point findCenter(boolean[][] mask) {
+    public static Point findCenterPrimitive(boolean[][] mask) {
         int count = 0;
         int sumX = 0;
         int sumY = 0;
@@ -193,10 +193,28 @@ public class Outline {
         return new Point(sumX/count, sumY/count);
     }
 
+    public static Point findCenterObject(Boolean[][] mask) {
+        int count = 0;
+        int sumX = 0;
+        int sumY = 0;
+    
+        for (int y = 0; y < mask.length; y++) {
+            for (int x = 0; x < mask[0].length; x++) {
+                if (Boolean.TRUE.equals(mask[y][x])) {  // Safe check
+                    sumX += x;
+                    sumY += y;
+                    count++;
+                }
+            }
+        }
+        return new Point(sumX / count, sumY / count);
+    }
+    
+
     public static Boolean[][] removeOutside(boolean[][] mask) {
         int maxHeight = mask.length;
         int maxWidth = mask[0].length;
-        Point center = findCenter(mask);
+        Point center = findCenterPrimitive(mask);
         boolean[][] visited = new boolean[maxHeight][maxWidth];
         Boolean[][] newMask = new Boolean[maxHeight][maxWidth];
         Queue<Point> queue = new ArrayDeque<>();
