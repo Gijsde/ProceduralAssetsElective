@@ -4,3 +4,5 @@ For this elective I Tried to procedurally create mountains.
 
 Mountain terminology:
 1. Spurs: these are the ridges/lines a mountain has.
+
+[description](images/mountain3.png)
