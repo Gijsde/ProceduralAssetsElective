@@ -2,93 +2,85 @@ package src;
 
 import java.awt.Point;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class Spurs {
 
-    private static Point farthestFromCenter(Boolean[][] mask) {
-        Point[] points = Mountain.findOutlinePoints(mask);
-        Point center = Outline.findCenterObject(mask);
+private static Point furthestFromCenter(List<Point> points, Point center) {
+    Point best = null;
+    double maxDistance = -1;
 
-        double distance = Double.MIN_VALUE;
-        Point farthesPoint = null;
-        for (Point point : points) {
-            if (Mountain.findDistance(point, center) > distance) {
-                distance = Mountain.findDistance(point, center);
-                farthesPoint = point;
-            }
+    for (Point point : points) {
+        double distance = Mountain.findDistance(center, point);
+        if (distance > maxDistance) {
+            maxDistance = distance;
+            best = point;
         }
-        return farthesPoint;
     }
+    return best;
+}
 
-    private static double angleWithCenter(Point other, Point center) {
-        double dx = other.x - center.x;
-        double dy = other.y - center.y;
-        return Math.atan2(dy, dx);
+private static double angle(Point from, Point to) {
+    double dx = to.x - from.x;
+    double dy = to.y - from.y;
+    double angle = Math.atan2(dy, dx);
+
+    // normalize angle to [-π, π]
+    if (angle < -Math.PI) angle += 2 * Math.PI;
+    if (angle >  Math.PI) angle -= 2 * Math.PI;
+
+    return angle;
+}
+
+private static boolean isWithinRanges(double angle, double[] angles, double range, int filled) {
+    for (int i = 0; i < filled; i++) {
+        double ang = angles[i];
+
+        // compute shortest circular distance
+        double diff = Math.abs(angle - ang);
+        if (diff > Math.PI) diff = 2*Math.PI - diff;
+
+        if (diff < range) return true;
     }
+    return false;
+}
 
-    private static double[] anglesForSpurs(Boolean[][] mask, int count) {
-        Point furthest = farthestFromCenter(mask);
-        Point center = Outline.findCenterObject(mask);
-        double rad = angleWithCenter(furthest, center);
-        double[] rads = new double[count];
+private static Point[] locationsForSpurs(Boolean[][] mask, int count) {
+    Point[] outlineArr = Mountain.findOutlinePoints(mask);
+    List<Point> outline = new ArrayList<>(Arrays.asList(outlineArr));
 
-        for (int i = 0; i < count; i++) {
-            rads[i] = i*Math.TAU/count + rad;
+    Point[] result = new Point[count];
+    double[] usedAngles = new double[count];
+    int filled = 0;
+
+    Point center = Outline.findCenterObject(mask);
+
+    double angleRange = Math.PI / count;
+
+    while (filled < count && !outline.isEmpty()) {
+
+        Point point = furthestFromCenter(outline, center);
+        if (point == null) break;
+
+        double ang = angle(center, point);
+
+        if (!isWithinRanges(ang, usedAngles, angleRange, filled)) {
+            result[filled] = point;
+            usedAngles[filled] = ang;
+            filled++;
         }
-        return rads;
+        outline.remove(point);
     }
-
-    private static double angleDiff(double a, double b) {
-        return Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
-    }
-    
-    
-    private static int findClosestIndex(double[] arr, double target) {
-        int closestIndex = 0;
-        double minDiff = Math.abs(arr[0] - target);
-    
-        for (int i = 1; i < arr.length; i++) {
-            double diff = angleDiff(arr[i], target);
-            if (diff < minDiff) {
-                minDiff = diff;
-                closestIndex = i;
-            }
-        }
-        return closestIndex;
-    }
-
-    private static Point[] locationForSpurs (Boolean[][] mask, int count) {
-        double[] angles = anglesForSpurs(mask, count);
-        Point[] farthestPoints = new Point[count];
-        double[] distances = new double[count];
-        Point center = Outline.findCenterObject(mask);
-
-        for (int y = 0; y < mask.length; y++) {
-            for (int x = 0; x < mask[0].length; x++) {
-                if (Boolean.TRUE.equals(mask[y][x])) {
-                    Point point = new Point(x, y);
-                    int closestIndex = findClosestIndex(angles, angleWithCenter(point, center));
-                    double distance = Mountain.findDistance(point, center);
-                    if (distances[closestIndex] < distance) {
-                        farthestPoints[closestIndex] = point;
-                        distances[closestIndex] = distance;
-                    }   
-                }
-                
-            }   
-        }
-        return farthestPoints;
-    }
-    
-
-
+    return result;
+}
 
 
     public static void main(String[] args) {
         File path = new File("images/photo.png");
         Boolean[][] mask = Outline.normalizeImage(path);
-        System.out.println(Arrays.toString(locationForSpurs(mask, 3)));        
+        Point[] positions = locationsForSpurs(mask, 3);
+        System.out.println(Arrays.toString(positions));
     }
-    
 }
