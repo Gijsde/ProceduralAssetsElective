@@ -3,11 +3,9 @@ package src;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Queue;
-import javax.imageio.ImageIO;
 
 
 public class Outline {
@@ -242,21 +240,15 @@ public class Outline {
     }
 
     public static Boolean[][] normalizeImage(File file) {
-        try {
-            BufferedImage image = ImageIO.read(new File("images/photo.png"));
-            boolean[][] mask = createBlackWhiteMask(image);
-            int height = image.getHeight();
-            int width = image.getWidth();
+        boolean[][] mask = ImageRW.loadFileAsBlackWhiteMask(file);
+        int height = mask.length;
+        int width = mask[0].length;
 
-            createSinglePixelLine(mask, new Point(width/2, height/2), height, width);
-            boolean[][] smallerMask = removeUnnecesaryLines(mask);
-            Boolean[][] onlyInside = removeOutside(smallerMask);
+        createSinglePixelLine(mask, new Point(width/2, height/2), height, width);
+        boolean[][] smallerMask = removeUnnecesaryLines(mask);
+        Boolean[][] onlyInside = removeOutside(smallerMask);
 
-            return onlyInside;
-        } catch(IOException e) {
-            System.out.println("image could not be loaded");
-        }
-        return null;
+        return onlyInside;
     }
 
 

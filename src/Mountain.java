@@ -3,13 +3,11 @@ package src;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.imageio.ImageIO;
 
 
-public class Mountiain {
+public class Mountain {
 
     public static double findDistance(Point from, Point to) {
         return Math.sqrt(Math.pow((from.x - to.x), 2) + Math.pow((from.y - to.y), 2));
@@ -36,7 +34,6 @@ public class Mountiain {
         int[][] heightMap = new int[height][width];
         Point[] outline = findOutlinePoints(mask);
         Point center = Outline.findCenterObject(mask);
-        System.out.println(findDistance(center, new Point(0, 0)));
     
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
@@ -105,15 +102,10 @@ public class Mountiain {
         int[][] heightMap = fillOutline(mask);
         System.out.println("no errors so far!!");
 
-
-        BufferedImage image = toGrayscaleImage(heightMap);
         File output = new File("images/mountain2.png");
 
-        try {
-            ImageIO.write(image, "png", output);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        ImageRW.saveGreyscaleMaskToFile(heightMap, output);
+
 
         /**
          * TODO: add a way to force the lines mountains have
