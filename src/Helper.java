@@ -68,4 +68,25 @@ public class Helper {
         }
         return locations.toArray(Point[]::new);
     }
+
+    public static double useFunctionForRatio(int function, double ratio) {
+        
+        switch (function) {
+            case 1 -> {
+                return ratio;
+            }
+            case 2 -> {
+                return Math.sqrt(ratio);
+            }
+            case 3 -> {
+                double x = 6 * (ratio - 0.5);
+                return 1 / (1 + Math.exp(-x));
+            }
+            case 4 -> {
+                return Math.pow(ratio, 4);
+            }
+        }
+        
+        return 0.0;
+    }
 }

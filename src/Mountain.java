@@ -25,7 +25,7 @@ public class Mountain {
         return points.toArray(new Point[0]);
     }
 
-    private static void addSpurToHeightMap(int[][] heightMap, boolean[][] spurMask, Point[] outline, Point center) {
+    private static void addSpurToHeightMap(int[][] heightMap, boolean[][] spurMask, Point[] outline, Point center, int function) {
         for (int y = 0; y < spurMask.length; y++) {
             for (int x = 0; x < spurMask[0].length; x++) {
                 if (spurMask[y][x]) {
@@ -33,7 +33,8 @@ public class Mountain {
                     double totalDistance = Helper.smallestDistanceFromPoint(outline, new Point(x, y)) + distanceToCenter;
     
                     double ratio = distanceToCenter/totalDistance;
-                    int value = (int) Math.round(ratio * 255);
+                    double tempValue = Helper.useFunctionForRatio(function, ratio);
+                    int value = (int) Math.round(tempValue * 255);
                     heightMap[y][x] = value;
                 } else heightMap[y][x] = 255;
             }
@@ -85,33 +86,7 @@ public class Mountain {
         return heightMap;
     }
 
-    // public static void fillOutline2(Boolean[][] mask, int[][] heightMap, Point[] spur, Point[] outline, Point center) {
-    //     int height = mask.length;
-    //     int width = mask[0].length;
-
-    //     for (int y = 0; y < height; y++) {
-    //         for (int x = 0; x < width; x++) {
-    //             //ensures outline and outside is always white
-    //             if (mask[y][x] == null || Boolean.TRUE.equals(mask[y][x])) {
-    //                 heightMap[y][x] = 255;
-    //             } else if (heightMap[y][x] == 255){
-    //                 Point point = new Point(x, y);
-    //                 Point spurPoint = Helper.closestFromPoint(spur, point);
-    //                 double distanceToCenter = findDistance(spurPoint, point);
-    //                 double distanceToLine = Helper.smallestDistanceFromPoint(outline, point);
-    //                 double totalDistance = distanceToCenter + distanceToLine;
-                    
-                    
-                    
-    //                 double ratio = Math.sqrt(distanceToCenter) / Math.sqrt(totalDistance);
-    //                 int value = (int) Math.round(255 * ratio);
-    //                 System.out.println("setting: " + value + " on: " + new Point(x, y));
-    //                 heightMap[y][x] = value;  
-    //             }
-    //         }
-    //     }
-    // }
-    public static void fillOutline2(Boolean[][] mask, int[][] heightMap, Point[] spur, Point[] outline, Point center) {
+    public static void fillOutline2(Boolean[][] mask, int[][] heightMap, Point[] spur, Point[] outline, Point center, int function) {
         int height = mask.length;
         int width = mask[0].length;
     
@@ -136,10 +111,11 @@ public class Mountain {
                     if (totalDistance == 0) totalDistance = 1e-6;
     
                     // ratio (0 at spur, 1 at line)
-                    double ratio = Math.sqrt(distanceToCenter / totalDistance);
+                    double ratio = distanceToCenter / totalDistance;
+                    double tempValue = Helper.useFunctionForRatio(function, ratio);
     
                     // final value interpolated from spur height
-                    int value = (int) Math.round(spurHeight * (1 - ratio) + 255 * ratio);
+                    int value = (int) Math.round(spurHeight * (1 - tempValue) + 255 * tempValue);
     
                     heightMap[y][x] = value;
                 }
@@ -149,7 +125,7 @@ public class Mountain {
 
 
     public static void main(String[] args) {
-        File path = new File("images/art.png");
+        File path = new File("images/input/photo.png");
         Boolean[][] mask = Outline.normalizeImage(path);
         int[][] heightMap = new int[mask.length][mask[0].length];
         // int[][] heightMap = fillOutline(mask);
@@ -171,30 +147,16 @@ public class Mountain {
             System.out.println(" ");
         }
 
-
-        // for (int y = 0; y < heightMap.length; y++) {
-        //     System.out.print(y);
-        //     for (int x = 0; x < heightMap[0].length; x++) {
-        //         System.out.print(heightMap[y][x]);
-        //     }
-        //     System.out.println(" ");
-        // }
-
-        addSpurToHeightMap(heightMap, spurMask, outline, center);
-        fillOutline2(mask, heightMap, spur, outline, center);
+        addSpurToHeightMap(heightMap, spurMask, outline, center, 0);
+        fillOutline2(mask, heightMap, spur, outline, center, 4);
         System.out.println(heightMap[16][20]);
 
         System.out.println("saving file");
 
-        File output = new File("images/mountain3.png");
+        File output = new File("images/mountain5.png");
 
         ImageRW.saveGreyscaleMaskToFile(heightMap, output);
 
-
-        /**
-         * TODO: allow for multiple different kind of functions to be used to determine the height of the mountain.
-         * f.e. be able to choose between a Sigmoid function or a linear function
-         */
 
         /**
          * TODO: add perlin noise to the height of the mountain
