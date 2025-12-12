@@ -79,8 +79,8 @@ public class Helper {
                 return Math.sqrt(ratio);
             }
             case 3 -> {
-                double x = 6 * (ratio - 0.5);
-                return 1 / (1 + Math.exp(-x));
+                
+                return (3 * Math.pow(ratio, 2)) - (2 * (Math.pow(ratio, 3)));
             }
             case 4 -> {
                 return Math.pow(ratio, 4);

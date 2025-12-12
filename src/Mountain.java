@@ -123,37 +123,39 @@ public class Mountain {
         }
     }
 
+    public static void tempFunction(int[][] heightMap, int[][] perlin, double percentage) {
+        for (int y = 0; y < heightMap.length; y++) {
+            for (int x = 0; x < heightMap[0].length; x++) {
+                if(heightMap[y][x] != 255) {
+                    heightMap[y][x] = (int)((heightMap[y][x] + (perlin[y][x] * percentage)) / (percentage + 1));
+                }
+            }
+            
+        }
+    }
+
 
     public static void main(String[] args) {
-        File path = new File("images/input/photo.png");
+        File path = new File("images/input/art.png");
         Boolean[][] mask = Outline.normalizeImage(path);
         int[][] heightMap = new int[mask.length][mask[0].length];
-        // int[][] heightMap = fillOutline(mask);
+        int[][] perlin = new int[mask.length][mask[0].length];
+        PerlinNoise.generatePerlin(perlin, 20);
+
         System.out.println("no errors so far!!");
         boolean[][] spurMask = Spurs.makeSpurMask(mask, 4);
         Point center = Outline.findCenterObject(mask);
         Point[] spur = Helper.findAllPoints(spurMask);
         Point[] outline = Helper.findAllPoints(mask);
+        
 
-        for (int y = 0; y < mask.length; y++) {
-            System.out.print(y);
-            for (int x = 0; x < mask[0].length; x++) {
-                if (Boolean.TRUE.equals(mask[y][x])) {
-                    System.out.print("x");
-                } else if (Boolean.FALSE.equals(mask[y][x])) {
-                    System.out.print(".");
-                } else System.out.print(" ");
-            }
-            System.out.println(" ");
-        }
-
-        addSpurToHeightMap(heightMap, spurMask, outline, center, 0);
-        fillOutline2(mask, heightMap, spur, outline, center, 4);
-        System.out.println(heightMap[16][20]);
+        addSpurToHeightMap(heightMap, spurMask, outline, center, 1);
+        fillOutline2(mask, heightMap, spur, outline, center, 2);
+        tempFunction(heightMap, perlin, .1);
 
         System.out.println("saving file");
 
-        File output = new File("images/mountain5.png");
+        File output = new File("images/mountain10.png");
 
         ImageRW.saveGreyscaleMaskToFile(heightMap, output);
 
