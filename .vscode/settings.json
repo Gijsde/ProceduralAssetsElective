@@ -1,0 +1,6 @@
+{
+    
+    "java.debug.settings.vmArgs": "-ea",
+    "java.debug.settings.console": "internalConsole",
+    "terminal.integrated.clearOnRun": true
+}

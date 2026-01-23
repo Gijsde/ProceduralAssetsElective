@@ -1,263 +1,62 @@
-package src;
-
-import java.awt.Point;
-import java.io.File;
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.Queue;
-
+import java.util.List;
 
 public class Outline {
-    public static int[][] directions = {
-        {1, 0},
-        {-1, 0},
-        {0, 1},
-        {0, -1}
-    };
 
-    // these are all the cases where a pixel is not allowed to be removed, rotation not included
-    public static boolean[][] blacklist = {
-        {true, false, false, false, true, false, true, false, false},
-        {true, false, false, false, true, false, false, true, false},
-        {true, false, false, false, true, false, false, false, true},
-        {true, false, false, false, true, true, false, false, false},
-        {true, false, false, true, true, false, false, false, true},
-        {true, false, false, true, true, true, false, false, false},
-        {true, false, true, true, true, false, false, false ,false},
-        {true, false, true, false, true, true, false, false ,false},
-        {true, true, false, false, true, false, false,false, true},
-        {false, false, false, true, true, true, false, false, false},
-        {true, false, false, true, true, false, false, false, false},
-        {true, true, false, false, true, false, false, false, false},
-        {true, true, false, false, true, false, false, true, false}
-    };
-
-   
-
-    private static boolean[][] createSinglePixelLine(boolean[][] mask, Point center, int maxHeight, int maxWidth) {
-        boolean hasremoved = true;
-
-        while (hasremoved) {
-            hasremoved = false;
-            Queue<Point> queue = new ArrayDeque<>();
-            boolean[][] visited = new boolean[maxHeight][maxWidth];
-            queue.add(center);
-            visited[center.y][center.x] = true;
-
-            while (!queue.isEmpty()) {
-                Point current = queue.poll();
-                // the program only has to check location with a true value
-                if (mask[current.y][current.x]) {
-                    // save the position and its surroundings
-                    boolean[] pos = takePart(mask, maxHeight, maxWidth, current);
-                    
-                    if (isRemovable(pos)) {
-                        hasremoved = true;
-                        mask[current.y][current.x] = false;
-                    }
-                } 
-
-                for (int[] dir : directions) {
-                    int futureX = current.x + dir[0];
-                    int futureY = current.y + dir[1];
-                    if (futureX >= 0 && futureX < maxWidth && futureY >= 0 && futureY < maxHeight) {
-                        if (!visited[futureY][futureX]) {
-                            queue.add(new Point(futureX, futureY));
-                            visited[futureY][futureX] = true;
-                        }
-                    }
-                }
-            }
+    private static boolean getSafe1D(boolean[] mask, int x, int y, int width, int height) {
+        // Check if y is within [0, height-1] and x is within [0, width-1]
+        if (x < 0 || x >= width || y < 0 || y >= height) {
+            return false; 
         }
-        return mask;
+        return mask[y * width + x];
     }
 
-    private static boolean isRemovable(boolean[] pos) {
-        
-        for (int index = 0; index < 4; index++) {
-            pos = rotateClockwise(pos);
-            for (boolean[] entry : blacklist) {
-                if (Arrays.equals(entry, pos)) return false;
-            }
+    private static int encodeDonut(boolean[] mask, int location, int height, int width) {
+        int grid = 0b0;
+        int x = location%width;
+        int y = location/width;
+
+        if (getSafe1D(mask, x - 1, y - 1, width, height)) grid |= 1 << 0;
+        if (getSafe1D(mask, x    , y - 1, width, height)) grid |= 1 << 1;
+        if (getSafe1D(mask, x + 1, y - 1, width, height)) grid |= 1 << 2;
+        if (getSafe1D(mask, x - 1, y    , width, height)) grid |= 1 << 3;
+        if (getSafe1D(mask, x + 1, y    , width, height)) grid |= 1 << 4;
+        if (getSafe1D(mask, x - 1, y + 1, width, height)) grid |= 1 << 5;
+        if (getSafe1D(mask, x    , y + 1, width, height)) grid |= 1 << 6;
+        if (getSafe1D(mask, x + 1, y + 1, width, height)) grid |= 1 << 7;
+
+        return grid;
+    }
+
+    private static boolean isRemovable(int value, int[] blacklist) {
+        for (int i : blacklist) {
+            if (i == value) return false;
         }
         return true;
     }
 
-    // takes a 3x3 square around a Point, a locations is out of bounds it sets that location to false.
-    private static boolean[] takePart(boolean[][] map, int maxHeight, int maxWidth, Point current) {
-        boolean[] pos = new boolean[9];
-        for (int dy = -1; dy <= 1; dy++) {
-            for (int dx = -1; dx <= 1; dx++) {
-        
-                int nx = current.x + dx;
-                int ny = current.y + dy;
-        
-                int idx = (dy + 1) * 3 + (dx + 1);
-        
-                // Bounds check
-                if (nx < 0 || ny < 0 || nx >= maxWidth || ny >= maxHeight) {
-                    pos[idx] = false;
-                } else {
-                    pos[idx] = map[ny][nx];
+    public static List<Integer> cleanupMask(boolean[] mask, int height, int width, int[] blacklist) {
+        // if (mask == null || blacklist == null) return mask;
+
+        boolean hasRemoved = true;
+
+        while (hasRemoved) {
+            hasRemoved = false;
+
+            List<Integer> outline = Helper.findBlack(mask);
+
+            for (int idx : outline) {
+                if (!mask[idx]) continue;
+
+                int encoded = encodeDonut(mask, idx, width, height);
+
+                if (isRemovable(encoded, blacklist)) {
+                    hasRemoved = true;
+                    mask[idx] = false;
                 }
             }
         }
-        return pos;
+        System.out.println("Cleaned up the image.");
+        return Helper.findBlack(mask);
     }
 
-    // only works with an array of size 9 if the array is seen as a 3x3 grid read from left to right, top to bottom
-    // idealy would be writtern more robust but I could care less
-    private static boolean[] rotateClockwise(boolean[] pos) {
-        boolean[] rotated = new boolean[9];
-        rotated[0] = pos[6];
-        rotated[1] = pos[3];
-        rotated[2] = pos[0];
-        rotated[3] = pos[7];
-        rotated[4] = pos[4];
-        rotated[5] = pos[1];
-        rotated[6] = pos[8];
-        rotated[7] = pos[5];
-        rotated[8] = pos[2];
-        return rotated;
-    }
-
-    private static boolean[][] removeUnnecesaryLines(boolean[][] originalMask) {
-
-        int height = originalMask.length;
-        int width = originalMask[0].length;
-    
-        int minX = width - 1;
-        int minY = height - 1;
-        int maxX = 0;
-        int maxY = 0;
-    
-        // find bounding box
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                if (originalMask[y][x]) {
-                    if (y < minY) minY = y;
-                    if (y > maxY) maxY = y;
-                    if (x < minX) minX = x;
-                    if (x > maxX) maxX = x;
-                }
-            }
-        }
-    
-        int newH = (maxY - minY) + 1;
-        int newW = (maxX - minX) + 1;
-    
-        boolean[][] image = new boolean[newH][newW];
-    
-        // copy cropped area
-        for (int y = minY; y <= maxY; y++) {
-            for (int x = minX; x <= maxX; x++) {
-                image[y - minY][x - minX] = originalMask[y][x];
-            }
-        }
-    
-        return image;
-    }
-
-    private static Point findCenterPrimitive(boolean[][] mask) {
-        int count = 0;
-        int sumX = 0;
-        int sumY = 0;
-
-        for (int y = 0; y < mask.length; y++) {
-            for (int x = 0; x < mask[0].length; x++) {
-                if (mask[y][x]) {
-                    sumX += x;
-                    sumY += y;
-                    count++;
-                }
-            }
-        }
-        return new Point(sumX/count, sumY/count);
-    }
-
-    public static Point findCenterObject(Boolean[][] mask) {
-        int count = 0;
-        int sumX = 0;
-        int sumY = 0;
-    
-        for (int y = 0; y < mask.length; y++) {
-            for (int x = 0; x < mask[0].length; x++) {
-                if (Boolean.TRUE.equals(mask[y][x])) {  // Safe check
-                    sumX += x;
-                    sumY += y;
-                    count++;
-                }
-            }
-        }
-        return new Point(sumX / count, sumY / count);
-    }
-    
-
-    private static Boolean[][] removeOutside(boolean[][] mask) {
-        int maxHeight = mask.length;
-        int maxWidth = mask[0].length;
-        Point center = findCenterPrimitive(mask);
-        boolean[][] visited = new boolean[maxHeight][maxWidth];
-        Boolean[][] newMask = new Boolean[maxHeight][maxWidth];
-        Queue<Point> queue = new ArrayDeque<>();
-        queue.add(center);
-        visited[center.y][center.x] = true;
-        
-        while (!queue.isEmpty()) {
-            Point current = queue.poll();
-            newMask[current.y][current.x] = mask[current.y][current.x];            
-
-            if (!mask[current.y][current.x]) {
-                for (int[] dir : directions) {
-                    int futureX = current.x + dir[0];
-                    int futureY = current.y + dir[1];
-                    if (futureX >= 0 && futureX < maxWidth && futureY >= 0 && futureY < maxHeight) {
-                        if (!visited[futureY][futureX]) {
-                            queue.add(new Point(futureX, futureY));
-                            visited[futureY][futureX] = true;
-                        }
-                    }
-                }
-            }
-        }
-        return newMask;
-    }
-
-    public static Boolean[][] normalizeImage(File file) {
-        boolean[][] mask = ImageRW.loadFileAsBlackWhiteMask(file);
-        int height = mask.length;
-        int width = mask[0].length;
-
-        createSinglePixelLine(mask, new Point(width/2, height/2), height, width);
-        boolean[][] smallerMask = removeUnnecesaryLines(mask);
-        Boolean[][] onlyInside = removeOutside(smallerMask);
-
-        return onlyInside;
-    }
-
-
-    public static void main(String[] args) {
-
-        File path = new File("images/photo.png");
-        Boolean[][] mask = normalizeImage(path);
-
-        
-        // Load image
-        int height = mask.length;
-        int width = mask[0].length;
-
-        for (int y = 0; y < height; y++) {
-            System.out.print(y + " ");
-            for (int x = 0; x < width; x++) {
-                if (x == width/2 && y == height/2) {
-                    System.out.print("o");
-                } else if (mask[y][x] == null) {
-                    System.out.print(" ");
-                } else {
-                    System.out.print(mask[y][x] ? "#" : ".");
-                }
-            }
-            System.out.println();
-        }
-    }
 }
