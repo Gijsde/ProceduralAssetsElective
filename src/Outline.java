@@ -15,7 +15,7 @@ public class Outline {
         int x = location%width;
         int y = location/width;
 
-        if (getSafe1D(mask, x - 1, y - 1, width, height)) grid |= 1 << 0;
+        if (getSafe1D(mask, x - 1, y - 1, width, height)) grid |= 1;
         if (getSafe1D(mask, x    , y - 1, width, height)) grid |= 1 << 1;
         if (getSafe1D(mask, x + 1, y - 1, width, height)) grid |= 1 << 2;
         if (getSafe1D(mask, x - 1, y    , width, height)) grid |= 1 << 3;

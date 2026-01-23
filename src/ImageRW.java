@@ -3,7 +3,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
-
 import javax.imageio.ImageIO;
 
 public class ImageRW {
@@ -60,7 +59,7 @@ public class ImageRW {
                 // int rgb = 255;
                 // if (mask[y * width + x]) rgb = 0;
                 int color = mask[y * width + x];
-                int rgb = color << 16 | color << 8 | color << 0;
+                int rgb = color << 16 | color << 8 | color;
                 image.setRGB(x, y, rgb);
             }
         }

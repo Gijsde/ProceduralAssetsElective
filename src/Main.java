@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
-
 import javax.imageio.ImageIO;
 
 public class Main {
@@ -30,11 +29,11 @@ public class Main {
 
         int[] heightmap = Temp.createHeightmap(outline, spurs, height, width, props);
 
-        int[] noise = Noise.generatePerlin(Integer.valueOf(props.getProperty("noiseRandomness")), height, width);
+        int[] noise = Noise.generatePerlin(Integer.parseInt(props.getProperty("noiseRandomness")), height, width);
 
-        heightmap = Noise.applyNoise(heightmap, noise, Double.valueOf(props.getProperty("noiseStrength")));
+        heightmap = Noise.applyNoise(heightmap, noise, Double.parseDouble(props.getProperty("noiseStrength")));
 
-        File outFile = new File(props.getProperty("output"));
+        File outFile = new File(props.getProperty("outputPNG"));
         ImageRW.writeIntMaskToFile(heightmap, outFile, height, width);
 
         System.out.println("End of file");

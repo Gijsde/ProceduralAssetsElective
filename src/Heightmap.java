@@ -1,11 +1,11 @@
+import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.ArrayList;
-import java.util.BitSet;
 
 public class Heightmap {
 
@@ -59,7 +59,7 @@ public class Heightmap {
         final int center = Helper.findCenter(outline, width);
 
         // First, compute spur values (single-threaded call you already had)
-        final int[] heightmap = applySpurs(spurs, outline, height, width, center, Integer.valueOf(props.getProperty("spurFunction")));
+        final int[] heightmap = applySpurs(spurs, outline, height, width, center, Integer.parseInt(props.getProperty("spurFunction")));
 
         // Build a fast membership mask for spurs
         final boolean[] spurMask = new boolean[size];
@@ -103,7 +103,7 @@ public class Heightmap {
                         double denom = distSpur + distOutline;
                         double factor = (denom == 0.0) ? 0.0 : 1.0 - (distSpur / denom); // = distOutline/denom
 
-                        factor = Functions.applyFunction(Integer.valueOf(props.getProperty("heightmapFunction")), factor);
+                        factor = Functions.applyFunction(Integer.parseInt(props.getProperty("heightmapFunction")), factor);
 
                         int value = (int) Math.round(factor * (double) heightmap[closestSpur]);
                         heightmap[i] = Helper.clamp255(value);
