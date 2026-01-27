@@ -119,4 +119,95 @@ public class Heightmap {
         System.out.println("Filled in the heightmap.");
         return heightmap;
     }
+
+    public static float[][] createFactorHeightArray(
+        List<Integer> outline,
+        List<Integer> spurs,
+        int height,
+        int width,
+        int spurFunction
+    ) throws InterruptedException, ExecutionException {
+        final int size = width * height;
+
+        float[][] factorHeight = new float[size][2];
+        if (spurs == null || spurs.isEmpty()) {
+            // fall back: either return zeros or compute different behavior
+            return factorHeight;
+        }
+
+        final int center = Helper.findCenter(outline, width);
+        System.out.println("maxheigthwidth" + height + ", " + width);
+        System.out.println("location center: x,y -> " + center % width + ", " + center/width);
+
+        // First, compute spur values (single-threaded call you already had)
+        final int[] heightmap = applySpurs(spurs, outline, height, width, center, spurFunction);
+
+        // Build a fast membership mask for spurs
+        final boolean[] spurMask = new boolean[size];
+        for (int s : spurs) {
+            if (s >= 0 && s < size) spurMask[s] = true;
+        }
+
+        // Parallel setup
+        final int nThreads = Math.max(1, Runtime.getRuntime().availableProcessors());
+        ExecutorService pool = Executors.newFixedThreadPool(nThreads);
+        List<Future<?>> futures = new ArrayList<>(nThreads);
+
+        // split by rows: each task handles [startRow, endRow)
+        int rowsPer = Math.max(1, height / nThreads);
+        for (int t = 0; t < nThreads; t++) {
+            final int startRow = t * rowsPer;
+            final int endRow = (t == nThreads - 1) ? height : Math.min(height, startRow + rowsPer);
+
+            futures.add(pool.submit(() -> {
+                // local copies for speed
+                final int w = width;
+
+                for (int y = startRow; y < endRow; y++) {
+                    int base = y * w;
+                    for (int x = 0; x < w; x++) {
+                        int i = base + x;
+                        if (spurMask[i]) {
+                            factorHeight[i][0] = 1.0f;           // A spur is at 100% of its own height
+                            factorHeight[i][1] = (float) heightmap[i]; 
+                            continue; 
+                        }
+                        int closestSpur = Helper.findClosest(i, spurs, w);
+                        if (closestSpur < 0 || closestSpur >= size) {
+                            // no valid spur: leave as is (0) or handle differently
+                            continue;
+                        }
+                        factorHeight[i][1] = (float) heightmap[closestSpur];
+                        
+
+                        int sx = closestSpur % w;
+                        int sy = closestSpur / w;
+
+                        double distSpur = Helper.distance(sx, sy, x, y);
+                        double distOutline = Helper.findClosestDistance(i, outline, w);
+                        double denom = distSpur + distOutline;
+                        double factor = 1.0 - (distSpur / denom); // = distOutline/denom
+                        factorHeight[i][0] = (float) factor;
+                    }
+                }
+            }));
+        }
+
+        // wait for tasks
+        for (Future<?> f : futures) f.get();
+        pool.shutdown();
+        return factorHeight;
+    }
+
+    public static int[] makeHeightmap(float[][] factorHeight, int function) {
+        int[] heightmap = new int[factorHeight.length];
+        
+        for (int i = 0; i < heightmap.length; i++) {
+            double factor = Functions.applyFunction(function, (double) factorHeight[i][0]);
+            int value = (int) Math.round(factor * factorHeight[i][1]);
+            heightmap[i] = Helper.clamp255(value);
+        }
+
+        return heightmap;
+    }
 }

@@ -1,3 +1,6 @@
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -128,5 +131,49 @@ public class Helper {
         if (v < 0) return 0;
         if (v > 255) return 255;
         return v;
+    }
+
+    public static BufferedImage booleanArrayToImage(boolean[] mask, int height, int width) {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
+        
+        for (int y = 0; y < width; y++) {
+            for (int x = 0; x < height; x++) {
+                // int rgb = 255;
+                // if (mask[y * width + x]) rgb = 0;
+                int rgb = (mask[y * width + x] ? 0 : 0xffffff);
+                image.setRGB(x, y, rgb);
+            }
+        }
+        return image;
+    }
+
+    public static BufferedImage IListToImage(List<Integer> values, int height, int width) {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
+        Graphics2D g = image.createGraphics();
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, width, height);
+        g.dispose();
+        for (Integer integer : values) {
+            int x = integer%width;
+            int y = integer/width;
+            image.setRGB(x, y, 0);
+        }
+        return image;
+    }
+
+        public static BufferedImage intArrayToImage(int[] mask, int height, int width) {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
+
+
+        for (int y = 0; y < width; y++) {
+            for (int x = 0; x < height; x++) {
+                // int rgb = 255;
+                // if (mask[y * width + x]) rgb = 0;
+                int color = mask[y * width + x];
+                int rgb = color << 16 | color << 8 | color;
+                image.setRGB(x, y, rgb);
+            }
+        }
+        return image;
     }
 }

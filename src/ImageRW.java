@@ -59,7 +59,7 @@ public class ImageRW {
                 // int rgb = 255;
                 // if (mask[y * width + x]) rgb = 0;
                 int color = mask[y * width + x];
-                int rgb = color << 16 | color << 8 | color;
+                int rgb = color << 16 | color << 8 | color << 0;
                 image.setRGB(x, y, rgb);
             }
         }

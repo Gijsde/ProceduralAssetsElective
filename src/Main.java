@@ -27,14 +27,24 @@ public class Main {
         List<Integer> outline = Outline.cleanupMask(mask, height, width, blacklist);
         List<Integer> spurs = Spurs.createSpurs(outline, height, width, Integer.parseInt(props.getProperty("spurcount")));
 
+        // float[][] arr = Heightmap.createFactorHeightArray(outline, spurs, height, width, Integer.parseInt(props.getProperty("spurFunction")));
+        // int[] heightmap = Heightmap.makeHeightmap(arr, Integer.parseInt(props.getProperty("heightmapFunction")));
+
         int[] heightmap = Temp.createHeightmap(outline, spurs, height, width, props);
 
         int[] noise = Noise.generatePerlin(Integer.parseInt(props.getProperty("noiseRandomness")), height, width);
 
         heightmap = Noise.applyNoise(heightmap, noise, Double.parseDouble(props.getProperty("noiseStrength")));
 
-        File outFile = new File(props.getProperty("outputPNG"));
-        ImageRW.writeIntMaskToFile(heightmap, outFile, height, width);
+        if (Boolean.parseBoolean(props.getProperty("toPNG"))) {
+            File outFilePNG = new File(props.getProperty("outputPNG"));
+            ImageRW.writeIntMaskToFile(heightmap, outFilePNG, height, width);
+        }
+
+        if (Boolean.parseBoolean(props.getProperty("toOBJ"))) {
+            File outFileOBJ = new File(props.getProperty("outputOBJ"));
+
+        }
 
         System.out.println("End of file");
     }
