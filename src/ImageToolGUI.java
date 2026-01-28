@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 
 public class ImageToolGUI extends JFrame {
@@ -25,112 +27,158 @@ public class ImageToolGUI extends JFrame {
     private int CENTER;
     private int SPURCOUNT;
 
+    // Add these as class-level boolean flags
+    private boolean isImported = false;
+    private boolean isCleaned = false;
+    private boolean isSpursDone = false;
+    private boolean isHeightmapDone = false;
+
+    private JButton importButton, cleanupImage, calculateSpurButton, fillHeightButton, exportButton;
+    private JProgressBar progressBar;
+
     // Example parameters
     private JTextField spurCounTextField;
     private JTextField spurFunction;
     private JTextField heightFunctiontTextField;
     private JTextField noiseRandomnessTextField;
     private JTextField noiseStrengthTextField;
+    private JTextField outnameTextField;
 
     public ImageToolGUI() {
         setTitle("Image Tool");
-        setSize(800, 600);
+        setSize(900, 700); // Slightly larger to accommodate the progress bar
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-
         setLayout(new BorderLayout());
 
         // ---- LEFT PANEL (controls) ----
         JPanel controlPanel = new JPanel();
         controlPanel.setLayout(new BoxLayout(controlPanel, BoxLayout.Y_AXIS));
         controlPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        controlPanel.setPreferredSize(new Dimension(220, 0));
-        
-        JButton importButton = new JButton("Import PNG");
-        JButton cleanupImage = new JButton("Clean up image");
-        JButton calculateSpurButton = new JButton("Calculate Spurs, Expensive!!!");
-        JButton fillHeightButton = new JButton("Fill in the rest of the heightmap");
+        controlPanel.setPreferredSize(new Dimension(250, 0));
 
-        JButton exportButton = new JButton("Export PNG");
-        
+        // Initialize Buttons
+        importButton = new JButton("Import PNG");
+        cleanupImage = new JButton("Clean up image");
+        calculateSpurButton = new JButton("Calculate Spurs (Expensive)");
+        fillHeightButton = new JButton("Fill Heightmap");
+        exportButton = new JButton("Export PNG");
+
+        // Initialize Progress Bar
+        progressBar = new JProgressBar(0, 100);
+        progressBar.setStringPainted(true);
+        progressBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
+
+        // Set initial enabled states
+        cleanupImage.setEnabled(false);
+        calculateSpurButton.setEnabled(false);
+        fillHeightButton.setEnabled(false);
+        exportButton.setEnabled(false);
+
+        // Setup TextFields (using your existing naming)
         spurCounTextField = new JTextField();
         spurFunction = new JTextField();
         heightFunctiontTextField = new JTextField();
         noiseRandomnessTextField = new JTextField();
         noiseStrengthTextField = new JTextField();
-        
-        // Sizing fixes
-        spurCounTextField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        spurFunction.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        heightFunctiontTextField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        noiseRandomnessTextField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        noiseStrengthTextField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
-        
-        // Alignment fixes
-        importButton.setAlignmentX(Component.LEFT_ALIGNMENT);
-        cleanupImage.setAlignmentX(Component.LEFT_ALIGNMENT);
-        exportButton.setAlignmentX(Component.LEFT_ALIGNMENT);
-        spurCounTextField.setAlignmentX(Component.LEFT_ALIGNMENT);
-        spurFunction.setAlignmentX(Component.LEFT_ALIGNMENT);
-        heightFunctiontTextField.setAlignmentX(Component.LEFT_ALIGNMENT);
-        noiseRandomnessTextField.setAlignmentX(Component.LEFT_ALIGNMENT);
-        noiseStrengthTextField.setAlignmentX(Component.LEFT_ALIGNMENT);
-        fillHeightButton.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
+        outnameTextField = new JTextField();
+
+        // Grouping all components for formatting
+        JComponent[] components = {
+            importButton, cleanupImage, spurCounTextField, spurFunction, 
+            calculateSpurButton, heightFunctiontTextField, noiseRandomnessTextField, 
+            noiseStrengthTextField, fillHeightButton, outnameTextField, exportButton, progressBar
+        };
+
+        for (JComponent c : components) {
+            c.setAlignmentX(Component.LEFT_ALIGNMENT);
+            if (c instanceof JTextField) c.setMaximumSize(new Dimension(Integer.MAX_VALUE, 25));
+        }
+
+        // Add to panel with labels
         controlPanel.add(importButton);
-        controlPanel.add(Box.createVerticalStrut(15));
-
-        controlPanel.add(cleanupImage);
-        controlPanel.add(Box.createVerticalStrut(15));
-        
-        controlPanel.add(new JLabel("spurcount:"));
-        controlPanel.add(spurCounTextField);
         controlPanel.add(Box.createVerticalStrut(10));
-
-        controlPanel.add(new JLabel("Spur function:"));
-        controlPanel.add(spurFunction);
+        controlPanel.add(cleanupImage);
         controlPanel.add(Box.createVerticalStrut(20));
 
+        controlPanel.add(new JLabel("Spur Count:"));
+        controlPanel.add(spurCounTextField);
+        controlPanel.add(new JLabel("Spur Function:"));
+        controlPanel.add(spurFunction);
         controlPanel.add(calculateSpurButton);
-        controlPanel.add(Box.createVerticalStrut(15));
+        controlPanel.add(Box.createVerticalStrut(20));
 
-        controlPanel.add(new JLabel("heightmap function:"));
+        controlPanel.add(new JLabel("Heightmap Function:"));
         controlPanel.add(heightFunctiontTextField);
         controlPanel.add(Box.createVerticalStrut(20));
-
-        controlPanel.add(new JLabel("noise randomness function:"));
+        
+        controlPanel.add(new JLabel("noise randomness Function:"));
         controlPanel.add(noiseRandomnessTextField);
         controlPanel.add(Box.createVerticalStrut(20));
-
-        controlPanel.add(new JLabel("noise strength function:"));
+        
+        controlPanel.add(new JLabel("noise strength Function:"));
         controlPanel.add(noiseStrengthTextField);
+        controlPanel.add(fillHeightButton);
         controlPanel.add(Box.createVerticalStrut(20));
 
-        controlPanel.add(fillHeightButton);
-        controlPanel.add(Box.createVerticalStrut(15));
-        
+        controlPanel.add(new JLabel("name for file:"));
+        controlPanel.add(outnameTextField);
+        controlPanel.add(new JLabel("Progress:"));
+        controlPanel.add(progressBar);
+
+
+        controlPanel.add(Box.createVerticalStrut(10));
         controlPanel.add(exportButton);
-        
+
+        // ---- DOCUMENT LISTENERS ----
+        DocumentListener fieldChecker = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) { updateStates(); }
+            @Override
+            public void removeUpdate(DocumentEvent e) { updateStates(); }
+            @Override
+            public void changedUpdate(DocumentEvent e) { updateStates(); }
+        };
+        spurCounTextField.getDocument().addDocumentListener(fieldChecker);
+        spurFunction.getDocument().addDocumentListener(fieldChecker);
+        heightFunctiontTextField.getDocument().addDocumentListener(fieldChecker);
+
+        // ---- BUTTON ACTIONS ----
+        importButton.addActionListener(e -> {
+            importImage();
+            isImported = true;
+            isCleaned = false;
+            isSpursDone = false;
+            isHeightmapDone = false;
+            updateStates();
+        });
+
+        cleanupImage.addActionListener(e -> {
+            cleanupImageAction(); // rename your existing cleanupImage() to avoid conflict
+            isCleaned = true;
+            isSpursDone = false;
+            isHeightmapDone = false;
+            updateStates();
+        });
+
+        calculateSpurButton.addActionListener(e ->  {
+            runSpurTask();
+            isSpursDone = true;
+            isHeightmapDone = false;
+            updateStates();
+        });
+
+        fillHeightButton.addActionListener(e -> {
+            runHeightmapTask();
+            isHeightmapDone = true;
+        });
+
+        exportButton.addActionListener(e -> exportImage());
+
         // ---- IMAGE DISPLAY ----
         imageLabel = new JLabel("", JLabel.CENTER);
         JScrollPane imageScrollPane = new JScrollPane(imageLabel);
 
-        // ---- BUTTON ACTIONS ----
-        importButton.addActionListener(e -> importImage());
-        cleanupImage.addActionListener(e -> cleanupImage());
-        calculateSpurButton.addActionListener((var e) -> {
-            try {
-                createSpurs();
-            } catch (InterruptedException | ExecutionException e1) {
-                System.out.println("calculating did not work");
-            }
-            
-        });
-        fillHeightButton.addActionListener(e -> fillHeightmap());
-        exportButton.addActionListener(e -> exportImage());
-
-
-        // ---- ADD TO FRAME ----
         add(controlPanel, BorderLayout.WEST);
         add(imageScrollPane, BorderLayout.CENTER);
     }
@@ -153,7 +201,7 @@ public class ImageToolGUI extends JFrame {
         }
     }
 
-    private void cleanupImage() {
+    private void cleanupImageAction() {
         mask = ImageRW.LoadImageToMask(currentImage, HEIGHT, WIDTH);
         outline = Outline.cleanupMask(mask, HEIGHT, WIDTH, Precompute.precomputeBlacklist());
         CENTER = Helper.findCenter(outline, WIDTH);
@@ -175,7 +223,7 @@ public class ImageToolGUI extends JFrame {
         imageLabel.setIcon(new ImageIcon(currentImage));
     }
 
-    private void fillHeightmap() {
+    private void runHeightmapTask() {
         heightmap = Heightmap.makeHeightmap(factorArray, Integer.parseInt(heightFunctiontTextField.getText()));
 
         int[] noise = Noise.generatePerlin(Integer.parseInt(noiseRandomnessTextField.getText()), HEIGHT, WIDTH);
@@ -184,32 +232,63 @@ public class ImageToolGUI extends JFrame {
 
         currentImage = Helper.intArrayToImage(heightmap, HEIGHT, WIDTH);
         imageLabel.setIcon(new ImageIcon(currentImage));
+        isHeightmapDone = true;
     }
 
 
     private void exportImage() {
-        if (currentImage == null) {
-            showError("No image to export");
-            return;
-        }
+        File file = new File("images/output/" + outnameTextField.getText() + ".png");
 
-        // BufferedImage resultImage = processImage(currentImage, paramA, paramB);
-
-        JFileChooser chooser = new JFileChooser();
-        chooser.setSelectedFile(new File("output.png"));
-
-        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-            try {
-                ImageIO.write(currentImage, "png", chooser.getSelectedFile());
-            } catch (IOException ex) {
-                showError("Failed to export image");
-            }
-        }
+        ImageRW.writeIntMaskToFile(heightmap, file, HEIGHT, WIDTH);
     }
 
     private void showError(String message) {
         JOptionPane.showMessageDialog(this, message, "Error",
                 JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void updateStates() {
+        boolean spursReady = !spurCounTextField.getText().trim().isEmpty() && 
+                             !spurFunction.getText().trim().isEmpty();
+        boolean heightReady = !heightFunctiontTextField.getText().trim().isEmpty() &&
+                              !noiseRandomnessTextField.getText().trim().isEmpty() &&
+                              !noiseStrengthTextField.getText().trim().isEmpty();
+    
+        cleanupImage.setEnabled(isImported);
+        calculateSpurButton.setEnabled(isCleaned && spursReady);
+        fillHeightButton.setEnabled(isSpursDone);
+        System.out.println(isHeightmapDone);
+        exportButton.setEnabled(true);
+    }
+
+    private void runSpurTask() {
+        // UI Feedback: Lock the button and start the bar
+        calculateSpurButton.setEnabled(false);
+        progressBar.setIndeterminate(true);
+        progressBar.setString("Calculating Spurs...");
+    
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                createSpurs(); // Your multi-threaded logic
+                return null;
+            }
+    
+            @Override
+            protected void done() {
+                try {
+                    get(); // check for errors
+                    isSpursDone = true;
+                    progressBar.setIndeterminate(false);
+                    progressBar.setValue(100);
+                    progressBar.setString("Spurs Done!");
+                } catch (InterruptedException | ExecutionException ex) {
+                    JOptionPane.showMessageDialog(ImageToolGUI.this, "Error: " + ex.getMessage());
+                }
+                updateStates();
+            }
+        };
+        worker.execute();
     }
 
     public static void main(String[] args) {
