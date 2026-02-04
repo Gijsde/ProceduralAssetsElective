@@ -27,10 +27,7 @@ public class Main {
         List<Integer> outline = Outline.cleanupMask(mask, height, width, blacklist);
         List<Integer> spurs = Spurs.createSpurs(outline, height, width, Integer.parseInt(props.getProperty("spurcount")));
 
-        // float[][] arr = Heightmap.createFactorHeightArray(outline, spurs, height, width, Integer.parseInt(props.getProperty("spurFunction")));
-        // int[] heightmap = Heightmap.makeHeightmap(arr, Integer.parseInt(props.getProperty("heightmapFunction")));
-
-        int[] heightmap = Temp.createHeightmap(outline, spurs, height, width, props);
+        int[] heightmap = Heightmap.createHeightmap(outline, spurs, height, width, props);
 
         int[] noise = Noise.generatePerlin(Integer.parseInt(props.getProperty("noiseRandomness")), height, width);
 
@@ -42,10 +39,13 @@ public class Main {
         }
 
         if (Boolean.parseBoolean(props.getProperty("toOBJ"))) {
-            File outFileOBJ = new File(props.getProperty("outputOBJ"));
+            String outOBJ = props.getProperty("outputOBJ");
+            float size = Float.parseFloat(props.getProperty("maxSize"));
+            float heightFactor = Float.parseFloat(props.getProperty("heigthFacor"));
 
+            OBJWriter.writeOBJ(heightmap, width, height, size, size, heightFactor, outOBJ);
         }
-
+        System.out.println("finished with no errors");
         System.out.println("End of file");
     }
 }
