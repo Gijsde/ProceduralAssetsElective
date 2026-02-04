@@ -3,7 +3,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Locale;
 
-public class Object {
+public class OBJWriter {
 
     /**
      * @param data         1D array of height values (0–255)

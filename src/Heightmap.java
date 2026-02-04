@@ -34,7 +34,7 @@ public class Heightmap {
             double denom = distCenter + distOutline;
             double factor;
             if (denom == 0.0) {
-                // both distances zero — choose neutral value (0.0) or 0.5 depending on intent
+                // both distances zero — choose neutral value (0.0)
                 factor = 0.0;
             } else {
                 factor = 1.0 - (distCenter / denom); // equivalent to distOutline/denom
@@ -58,14 +58,35 @@ public class Heightmap {
 
         final int center = Helper.findCenter(outline, width);
 
+        // parse function IDs once
+        final int spurFunction = Integer.parseInt(props.getProperty("spurFunction", "0"));
+        final int heightmapFunction = Integer.parseInt(props.getProperty("heightmapFunction", "0"));
+
         // First, compute spur values (single-threaded call you already had)
-        final int[] heightmap = applySpurs(spurs, outline, height, width, center, Integer.parseInt(props.getProperty("spurFunction")));
+        final int[] heightmap = applySpurs(spurs, outline, height, width, center, spurFunction);
 
         // Build a fast membership mask for spurs
         final boolean[] spurMask = new boolean[size];
         for (int s : spurs) {
             if (s >= 0 && s < size) spurMask[s] = true;
         }
+
+        // Precompute spur coordinates to avoid repeated div/mod
+        final int nSpurs = spurs.size();
+        final int[] spurIdx = new int[nSpurs];
+        final int[] spurX = new int[nSpurs];
+        final int[] spurY = new int[nSpurs];
+        for (int i = 0; i < nSpurs; i++) {
+            int idx = spurs.get(i);
+            spurIdx[i] = idx;
+            spurX[i] = idx % width;
+            spurY[i] = idx / width;
+        }
+
+        // Parameters for smoothing
+        final int K = Math.min(20, nSpurs); // number of nearest spurs to blend (tuneable: 2..4)
+        final double IDW_POWER = 10.0;     // inverse-distance weighting power (tuneable)
+        final double EPS = 1e-6;          // small epsilon to avoid div-by-zero
 
         // Parallel setup
         final int nThreads = Math.max(1, Runtime.getRuntime().availableProcessors());
@@ -81,6 +102,11 @@ public class Heightmap {
             futures.add(pool.submit(() -> {
                 // local copies for speed
                 final int w = width;
+                final int hmFunc = heightmapFunction;
+
+                // temporary arrays for K-NN selection
+                final double[] knnDist = new double[K];
+                final int[] knnIdx = new int[K];
 
                 for (int y = startRow; y < endRow; y++) {
                     int base = y * w;
@@ -88,24 +114,73 @@ public class Heightmap {
                         int i = base + x;
                         if (spurMask[i]) continue; // already set by applySpurs
 
-                        int closestSpur = Helper.findClosest(i, spurs, w);
-                        if (closestSpur < 0 || closestSpur >= size) {
-                            // no valid spur: leave as is (0) or handle differently
+                        // find outline distance once per pixel
+                        double distOutline = Helper.findClosestDistance(i, outline, w);
+
+                        // find K nearest spurs by linear scan (replace with spatial index if needed)
+                        for (int kk = 0; kk < K; kk++) {
+                            knnDist[kk] = Double.POSITIVE_INFINITY;
+                            knnIdx[kk] = -1;
+                        }
+                        for (int s = 0; s < nSpurs; s++) {
+                            double dx = spurX[s] - x;
+                            double dy = spurY[s] - y;
+                            double d = Math.hypot(dx, dy);
+
+                            // insert into sorted knn arrays if smaller than largest
+                            if (d < knnDist[K - 1]) {
+                                // insertion sort shift
+                                int pos = K - 1;
+                                while (pos > 0 && d < knnDist[pos - 1]) {
+                                    knnDist[pos] = knnDist[pos - 1];
+                                    knnIdx[pos] = knnIdx[pos - 1];
+                                    pos--;
+                                }
+                                knnDist[pos] = d;
+                                knnIdx[pos] = s; // store spur array index
+                            }
+                        }
+
+                        // if nearest spur distance is infinite (no spurs), skip
+                        if (knnIdx[0] < 0) continue;
+
+                        // exact spur location -> copy its value
+                        if (knnDist[0] <= EPS) {
+                            int spurArrayIndex = knnIdx[0];
+                            int spurGlobalIndex = spurIdx[spurArrayIndex];
+                            heightmap[i] = heightmap[spurGlobalIndex];
                             continue;
                         }
 
-                        int sx = closestSpur % w;
-                        int sy = closestSpur / w;
+                        // compute weighted average of contributions from K nearest spurs
+                        double weightSum = 0.0;
+                        double weightedValue = 0.0;
+                        for (int kk = 0; kk < K; kk++) {
+                            int sIndex = knnIdx[kk];
+                            if (sIndex < 0) break;
+                            double d = knnDist[kk];
 
-                        double distSpur = Helper.distance(sx, sy, x, y);
-                        double distOutline = Helper.findClosestDistance(i, outline, w);
+                            // inverse-distance weight
+                            double wgt = 1.0 / Math.pow(d + EPS, IDW_POWER);
 
-                        double denom = distSpur + distOutline;
-                        double factor = (denom == 0.0) ? 0.0 : 1.0 - (distSpur / denom); // = distOutline/denom
+                            // per-spur factor mixing spur distance and outline distance
+                            double denom = d + distOutline;
+                            double factor = (denom == 0.0) ? 0.0 : 1.0 - (d / denom);
+                            factor = Functions.applyFunction(hmFunc, factor);
 
-                        factor = Functions.applyFunction(Integer.parseInt(props.getProperty("heightmapFunction")), factor);
+                            int spurGlobalIndex = spurIdx[sIndex];
+                            int spurValue = heightmap[spurGlobalIndex];
 
-                        int value = (int) Math.round(factor * (double) heightmap[closestSpur]);
+                            weightedValue += wgt * (factor * spurValue);
+                            weightSum += wgt;
+                        }
+
+                        if (weightSum == 0.0) {
+                            // fallback: leave zero
+                            continue;
+                        }
+
+                        int value = (int) Math.round(weightedValue / weightSum);
                         heightmap[i] = Helper.clamp255(value);
                     }
                 }
@@ -120,6 +195,12 @@ public class Heightmap {
         return heightmap;
     }
 
+    /*
+    in stead of giving a heigthmap of integers, 
+    this creates an array where each position represents the location in the heightmap
+    each point stores 2 values, a factor that determines the height based on the closest spur
+    and the max height, this will be used to determine the heigth of the pixels.
+    */
     public static float[][] createFactorHeightArray(
         List<Integer> outline,
         List<Integer> spurs,
@@ -131,7 +212,6 @@ public class Heightmap {
 
         float[][] factorHeight = new float[size][2];
         if (spurs == null || spurs.isEmpty()) {
-            // fall back: either return zeros or compute different behavior
             return factorHeight;
         }
 
@@ -199,6 +279,7 @@ public class Heightmap {
         return factorHeight;
     }
 
+    // converts the returnvalue of createFactorHeightArray and turns it into a heightmap
     public static int[] makeHeightmap(float[][] factorHeight, int function) {
         int[] heightmap = new int[factorHeight.length];
         
@@ -207,7 +288,6 @@ public class Heightmap {
             int value = (int) Math.round(factor * factorHeight[i][1]);
             heightmap[i] = Helper.clamp255(value);
         }
-
         return heightmap;
     }
 }
